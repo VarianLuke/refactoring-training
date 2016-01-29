@@ -13,8 +13,13 @@ namespace Refactoring
         [JsonProperty("Username")]
         public string Name;
         [JsonProperty("Password")]
-        public string Pwd;
+        public string Password;
         [JsonProperty("Balance")]
-        public double Bal;
+        public double Balance;
+
+        internal bool HasEnoughMoney(double price)
+        {
+            return (Balance >= price);
+        }
     }
 }

@@ -15,6 +15,16 @@ namespace Refactoring
         [JsonProperty("Price")]
         public double Price;
         [JsonProperty("Quantity")]
-        public int Qty;
+        public int Quantity;
+
+        internal double GetPrice(int selectedQuantity)
+        {
+            return (Price * selectedQuantity);
+        }
+
+        internal bool HasEnoughInventory(int selectedQuantity)
+        {
+            return (Quantity >= selectedQuantity);
+        }
     }
 }

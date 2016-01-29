@@ -10,221 +10,176 @@ namespace Refactoring
 {
     public class Tusc
     {
-        public static void Start(List<User> usrs, List<Product> prods)
-        {
-            // Write welcome message
-            Console.WriteLine("Welcome to TUSC");
-            Console.WriteLine("---------------");
+        private List<User> _userList;
+        private List<Product> _productList;
+        private User _currentUser;
+        private bool _isDisplayingProductList = false;
 
+        private const int MENU_CHOICE_EXIT = 7;
+
+        public Tusc(List<User> userList, List<Product> productList)
+        {
+            _userList = userList;
+            _productList = productList;
+        }
+
+        public void Start()
+        {
+            if (_userList == null || _productList == null)
+            {
+                throw new Exception("Application not started correctly.");
+            }
+
+            UserInterface.DisplayTuscWelcomeMessage();
+
+            var loggedIn = BeginUserLogin();
+
+            
+
+            UserInterface.DisplayUserWelcomeMessage(_currentUser);
+
+            UserInterface.DisplayUserBalance(_currentUser);
+
+            ShowProductList();
+
+            UserInterface.WaitForUserInputBeforeClosing();
+        }
+
+        private bool BeginUserLogin()
+        {
             // Login
             Login:
-            bool loggedIn = false; // Is logged in?
 
-            // Prompt for user input
-            Console.WriteLine();
-            Console.WriteLine("Enter Username:");
-            string name = Console.ReadLine();
+            string enteredUserName = UserInterface.PromptForUserName();
+
+            if (string.IsNullOrEmpty(enteredUserName))
+            {
+                goto Login;
+            }
 
             // Validate Username
-            bool valUsr = false; // Is valid user?
-            if (!string.IsNullOrEmpty(name))
+            var isUserNameValid = IsUserInList(enteredUserName);
+
+            if (!isUserNameValid)
             {
-                for (int i = 0; i < 5; i++)
+                UserInterface.DisplayInvalidUserMessage();
+
+                goto Login;
+            }
+
+            _currentUser = GetUserFromList(enteredUserName);
+
+            string password = UserInterface.PromptForPassword();
+
+            var isPasswordValid = ValidatePassword(password);
+
+            if (!isPasswordValid)
+            {
+                UserInterface.DisplayInvalidPasswordMessage();
+
+                goto Login;
+            }
+
+            return true;
+        }
+
+        private void ShowProductList()
+        {
+            _isDisplayingProductList = true;
+
+            // Show product list
+            while (_isDisplayingProductList)
+            {
+                // Prompt for user input
+                Console.WriteLine();
+                Console.WriteLine("What would you like to buy?");
+                for (int i = 0; i < 7; i++)
                 {
-                    User user = usrs[i];
-                    // Check that name matches
-                    if (user.Name == name)
-                    {
-                        valUsr = true;
-                    }
+                    Product prod = _productList[i];
+                    Console.WriteLine(i + 1 + ": " + prod.Name + " (" + prod.Price.ToString("C") + ")");
                 }
+                Console.WriteLine(_productList.Count + 1 + ": Exit");
 
-                // if valid user
-                if (valUsr)
+                // Prompt for user input
+                var menuChoice = UserInterface.PromptForNumber("Enter a number:");
+                menuChoice = menuChoice - 1;
+
+                // Check if user entered number that equals product count
+                if (menuChoice == MENU_CHOICE_EXIT)
                 {
-                    // Prompt for user input
-                    Console.WriteLine("Enter Password:");
-                    string pwd = Console.ReadLine();
-
-                    // Validate Password
-                    bool valPwd = false; // Is valid password?
-                    for (int i = 0; i < 5; i++)
-                    {
-                        User user = usrs[i];
-
-                        // Check that name and password match
-                        if (user.Name == name && user.Pwd == pwd)
-                        {
-                            valPwd = true;
-                        }
-                    }
-
-                    // if valid password
-                    if (valPwd == true)
-                    {
-                        loggedIn = true;
-
-                        // Show welcome message
-                        Console.Clear();
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine();
-                        Console.WriteLine("Login successful! Welcome " + name + "!");
-                        Console.ResetColor();
-                        
-                        // Show remaining balance
-                        double bal = 0;
-                        for (int i = 0; i < 5; i++)
-                        {
-                            User usr = usrs[i];
-
-                            // Check that name and password match
-                            if (usr.Name == name && usr.Pwd == pwd)
-                            {
-                                bal = usr.Bal;
-
-                                // Show balance 
-                                Console.WriteLine();
-                                Console.WriteLine("Your balance is " + usr.Bal.ToString("C"));
-                            }
-                        }
-
-                        // Show product list
-                        while (true)
-                        {
-                            // Prompt for user input
-                            Console.WriteLine();
-                            Console.WriteLine("What would you like to buy?");
-                            for (int i = 0; i < 7; i++)
-                            {
-                                Product prod = prods[i];
-                                Console.WriteLine(i + 1 + ": " + prod.Name + " (" + prod.Price.ToString("C") + ")");
-                            }
-                            Console.WriteLine(prods.Count + 1 + ": Exit");
-
-                            // Prompt for user input
-                            Console.WriteLine("Enter a number:");
-                            string answer = Console.ReadLine();
-                            int num = Convert.ToInt32(answer);
-                            num = num - 1; /* Subtract 1 from number
-                            num = num + 1 // Add 1 to number */
-
-                            // Check if user entered number that equals product count
-                            if (num == 7)
-                            {
-                                // Update balance
-                                foreach (var usr in usrs)
-                                {
-                                    // Check that name and password match
-                                    if (usr.Name == name && usr.Pwd == pwd)
-                                    {
-                                        usr.Bal = bal;
-                                    }
-                                }
-
-                                // Write out new balance
-                                string json = JsonConvert.SerializeObject(usrs, Formatting.Indented);
-                                File.WriteAllText(@"Data/Users.json", json);
-
-                                // Write out new quantities
-                                string json2 = JsonConvert.SerializeObject(prods, Formatting.Indented);
-                                File.WriteAllText(@"Data/Products.json", json2);
-
-
-                                // Prevent console from closing
-                                Console.WriteLine();
-                                Console.WriteLine("Press Enter key to exit");
-                                Console.ReadLine();
-                                return;
-                            }
-                            else
-                            {
-                                Console.WriteLine();
-                                Console.WriteLine("You want to buy: " + prods[num].Name);
-                                Console.WriteLine("Your balance is " + bal.ToString("C"));
-
-                                // Prompt for user input
-                                Console.WriteLine("Enter amount to purchase:");
-                                answer = Console.ReadLine();
-                                int qty = Convert.ToInt32(answer);
-
-                                // Check if balance - quantity * price is less than 0
-                                if (bal - prods[num].Price * qty < 0)
-                                {
-                                    Console.Clear();
-                                    Console.ForegroundColor = ConsoleColor.Red;
-                                    Console.WriteLine();
-                                    Console.WriteLine("You do not have enough money to buy that.");
-                                    Console.ResetColor();
-                                    continue;
-                                }
-
-                                // Check if quantity is less than quantity
-                                if (prods[num].Qty <= qty)
-                                {
-                                    Console.Clear();
-                                    Console.ForegroundColor = ConsoleColor.Red;
-                                    Console.WriteLine();
-                                    Console.WriteLine("Sorry, " + prods[num].Name + " is out of stock");
-                                    Console.ResetColor();
-                                    continue;
-                                }
-
-                                // Check if quantity is greater than zero
-                                if (qty > 0)
-                                {
-                                    // Balance = Balance - Price * Quantity
-                                    bal = bal - prods[num].Price * qty;
-
-                                    // Quanity = Quantity - Quantity
-                                    prods[num].Qty = prods[num].Qty - qty;
-
-                                    Console.Clear();
-                                    Console.ForegroundColor = ConsoleColor.Green;
-                                    Console.WriteLine("You bought " + qty + " " + prods[num].Name);
-                                    Console.WriteLine("Your new balance is " + bal.ToString("C"));
-                                    Console.ResetColor();
-                                }
-                                else
-                                {
-                                    // Quantity is less than zero
-                                    Console.Clear();
-                                    Console.ForegroundColor = ConsoleColor.Yellow;
-                                    Console.WriteLine();
-                                    Console.WriteLine("Purchase cancelled");
-                                    Console.ResetColor();
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Invalid Password
-                        Console.Clear();
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine();
-                        Console.WriteLine("You entered an invalid password.");
-                        Console.ResetColor();
-
-                        goto Login;
-                    }
+                    SaveModifications();
+                    _isDisplayingProductList = false;
                 }
                 else
                 {
-                    // Invalid User
-                    Console.Clear();
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine();
-                    Console.WriteLine("You entered an invalid user.");
-                    Console.ResetColor();
+                    var product = _productList[menuChoice];
 
-                    goto Login;
+                    UserInterface.DisplayPurchaseChoiceInfo(_currentUser, product);
+
+                    // Prompt for user input
+                    Console.WriteLine();
+                    int selectedQuantity = UserInterface.PromptForNumber("Enter amount to purchase:");
+
+                    var totalPrice = product.GetPrice(selectedQuantity);
+
+                    if (!_currentUser.HasEnoughMoney(totalPrice))
+                    {
+                        UserInterface.DisplayUserInsufficientFundsMessage();
+                        continue;
+                    }
+
+                    // Check if quantity is less than quantity
+                    if (!product.HasEnoughInventory(selectedQuantity))
+                    {
+                        UserInterface.DisplayUserInsufficientQuantityMessage(product);
+                        continue;
+                    }
+
+                    // Check if quantity is greater than zero
+                    if (selectedQuantity > 0)
+                    {
+                        _currentUser.Balance -= totalPrice;
+
+                        product.Quantity -= selectedQuantity;
+
+                        UserInterface.DisplayUserPurchase(_currentUser, product, selectedQuantity);
+                    }
+                    else
+                    {
+                        UserInterface.DisplayQuantityLessThanZeroMessage();
+                    }
                 }
             }
+        }
 
-            // Prevent console from closing
-            Console.WriteLine();
-            Console.WriteLine("Press Enter key to exit");
-            Console.ReadLine();
+        
+
+        private void SaveModifications()
+        {
+            FileManager.SaveJsonFile(@"Data/Users.json", _userList);
+            FileManager.SaveJsonFile(@"Data/Products.json", _productList);
+        }
+
+        private bool IsUserInList(string enteredUserName)
+        {
+            var userFound = _userList.FirstOrDefault(u => u.Name == enteredUserName);
+
+            return (userFound != null);
+        }
+        
+        private User GetUserFromList(string enteredUserName)
+        {
+            return _userList.FirstOrDefault(u => u.Name == enteredUserName);
+        }
+
+        private bool ValidatePassword(string password)
+        {
+            if (_currentUser == null)
+            {
+                return false;
+            }
+
+            return (password == _currentUser.Password);
         }
     }
 }
